@@ -15,7 +15,7 @@
 
 # Robotic Arm Control
 # ------------------------------------------------------------
-piper-sdk>=1.0.0        # Piper robotic arm SDK
+piper-sdk>=0.6.0        # Piper robotic arm SDK
 python-can>=4.0.0       # CAN bus communication for robotic arm
 
 
