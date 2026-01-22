@@ -82,19 +82,88 @@ git clone https://github.com/Selina22/unitree_go_jetson.git
 cd unitree_go_jetson
 ```
 
-### Python dependencies
+### Prerequisites: Install ROS1 Noetic and ROS2 Foxy
+
+This SDK requires **both** ROS1 Noetic and ROS2 Foxy. ROS1 handles LiDAR and SLAM, while ROS2 handles navigation and arm control.
+
+#### Install ROS1 Noetic
+
+```bash
+# Add ROS1 repository
+sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros-noetic.list'
+curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+
+# Install ROS1 Noetic
+sudo apt update
+sudo apt install ros-noetic-desktop-full
+
+# Install additional ROS1 tools
+sudo apt install python3-catkin-tools python3-rosdep
+```
+
+#### Install ROS2 Foxy
+
+```bash
+# Add ROS2 repository
+sudo sh -c 'echo "deb [arch=amd64] http://packages.ros.org/ros2/ubuntu focal main" > /etc/apt/sources.list.d/ros2-latest.list'
+curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | sudo apt-key add -
+
+# Install ROS2 Foxy
+sudo apt update
+sudo apt install ros-foxy-desktop
+
+# Install additional ROS2 tools
+sudo apt install python3-colcon-common-extensions
+```
+
+#### Install ROS1-ROS2 Bridge
+
+```bash
+sudo apt install ros-foxy-ros1-bridge
+```
+
+#### Initialize rosdep (first time only)
+
+```bash
+sudo rosdep init
+rosdep update
+```
+
+#### Setup Shell Aliases (Recommended)
+
+Add these aliases to your `~/.bashrc` for easy environment switching:
+
+```bash
+echo "alias ros1='source /opt/ros/noetic/setup.bash'" >> ~/.bashrc
+echo "alias ros2='source /opt/ros/foxy/setup.bash'" >> ~/.bashrc
+source ~/.bashrc
+```
+
+> **Important**: Never source both ROS1 and ROS2 in the same terminal. Use separate terminals for each.
+
+### Python Dependencies
+
 ```bash
 sudo apt update
-sudo apt install -y libxml2-dev libxslt1-dev zlib1g-dev python3-dev build-essential
+sudo apt install -y libxml2-dev libxslt1-dev zlib1g-dev python3-dev build-essential can-utils
 pip3 install -r requirements.txt
 ```
 
-Install unitree sdk python from https://github.com/unitreerobotics/unitree_sdk2_python
+Install Unitree SDK for Python from https://github.com/unitreerobotics/unitree_sdk2_python
 
-### ROS1 Installation (Hesai lidar, fasterlio)
+### ROS1 Installation (Hesai LiDAR, Faster-LIO)
 
 ```bash
+# Source ROS1 environment
+source /opt/ros/noetic/setup.bash
+
+# Install Faster-LIO dependencies
+sudo apt install libgoogle-glog-dev libgflags-dev libeigen3-dev libpcl-dev
+
 cd unitree_ros1
+
+# Install ROS1 dependencies
+rosdep install --from-paths src --ignore-src -r -y
 
 # Build workspace
 catkin_make
@@ -103,19 +172,29 @@ catkin_make
 source devel/setup.bash
 ```
 
+> **Note**: If `catkin_make` fails with glog errors, ensure `libgoogle-glog-dev` is installed.
+
 #### Hesai lidar
 
 Setup the device ip address in [config.yaml](/unitree_ros1/src/HesaiLidar_ROS_2.0/config/config.yaml) following the set up guide in [HesaiLidar_ROS_2.0](/unitree_ros1/src/HesaiLidar_ROS_2.0/README.md).
 
-### ROS2 Installation (nav2, piper, realsense, unitree message converter, yolo)
+### ROS2 Installation (Nav2, Piper, RealSense, Unitree Message Converter, YOLO)
+
+> **Note**: Make sure you are in a **new terminal** without ROS1 sourced.
 
 ```bash
-# First build the unitree ros2 cyclone dds workspace
+# Source ROS2 environment
+source /opt/ros/foxy/setup.bash
+
+# Install ROS2 dependencies
+sudo apt install ros-foxy-navigation2 ros-foxy-nav2-bringup ros-foxy-realsense2-camera
+
+# Build CycloneDDS workspace
 cd unitree_ros2/cyclonedds_ws/
 export LD_LIBRARY_PATH=/opt/ros/foxy/lib
-colcon build --packages-select cyclonedds #Compile cyclone-dds package
-# Then build the unitree messages under the same directory
-source /opt/ros/foxy/setup.bash
+colcon build --packages-select cyclonedds
+
+# Build all unitree messages
 colcon build
 ```
 
@@ -376,13 +455,61 @@ bash can_activate.sh can_piper 1000000 "1-2:1.0"
 
 ## Troubleshooting
 
-### Jeton Board Performance Optimization
+### Conda/Miniconda Conflicts with ROS
+
+If you have Conda/Miniconda installed, it may interfere with ROS builds. You'll see errors like:
+```
+AttributeError: module 'em' has no attribute 'BUFFERED_OPT'
+```
+
+**Solution 1**: Deactivate Conda before building
+```bash
+conda deactivate
+source /opt/ros/noetic/setup.bash  # or foxy
+```
+
+**Solution 2**: Install compatible empy in Conda
+```bash
+pip install empy==3.3.4
+```
+
+**Solution 3**: Remove Conda from your environment
+```bash
+conda init --reverse --all
+```
+
+### ROS1/ROS2 Environment Conflicts
+
+Never source both ROS1 and ROS2 in the same terminal. Use separate terminals:
+```bash
+# Terminal 1 - ROS1
+source /opt/ros/noetic/setup.bash
+
+# Terminal 2 - ROS2
+source /opt/ros/foxy/setup.bash
+```
+
+### Clean Build (when builds fail)
+
+```bash
+# For ROS1
+cd unitree_ros1
+rm -rf build/ devel/
+catkin_make
+
+# For ROS2
+cd unitree_ros2/cyclonedds_ws
+rm -rf build/ install/ log/
+colcon build
+```
+
+### Jetson Board Performance Optimization
 
 ```bash
 sudo jetson_clocks
 sudo nvpmodel -m 0
 echo -1 | sudo tee /sys/module/usbcore/parameters/autosuspend
-for f in /sys/bus/usb/devices/*/power/control; do echo on | sudo tee "$f"; done"
+for f in /sys/bus/usb/devices/*/power/control; do echo on | sudo tee "$f"; done
 ```
 
 ## Support and Contributing
