@@ -145,9 +145,20 @@ source ~/.bashrc
 sudo apt update
 sudo apt install -y libxml2-dev libxslt1-dev zlib1g-dev python3-dev build-essential can-utils
 pip3 install -r requirements.txt
+
+# Unitree SDK for robot control (REQUIRED)
+pip3 install unitree_sdk2py
+
+# Ultralytics for YOLO object detection (optional, for vision features)
+pip3 install ultralytics
 ```
 
-Install Unitree SDK for Python from https://github.com/unitreerobotics/unitree_sdk2_python
+#### Verify Python Dependencies
+
+```bash
+# Check all required packages are installed
+pip3 show unitree_sdk2py piper-sdk python-can ultralytics
+```
 
 ### ROS1 Installation (Hesai LiDAR, Faster-LIO)
 
@@ -185,15 +196,15 @@ Setup the device ip address in [config.yaml](/unitree_ros1/src/HesaiLidar_ROS_2.
 source /opt/ros/foxy/setup.bash
 
 # Install ROS2 dependencies
-sudo apt install ros-foxy-navigation2 ros-foxy-nav2-bringup ros-foxy-realsense2-camera
+sudo apt install ros-foxy-navigation2 ros-foxy-nav2-bringup ros-foxy-nav2-bt-navigator \
+    ros-foxy-realsense2-camera ros-foxy-rmw-cyclonedds-cpp ros-foxy-rosidl-generator-dds-idl
 
-# Build CycloneDDS workspace
+# Build CycloneDDS workspace (skip cyclonedds/rmw - use system packages)
 cd unitree_ros2/cyclonedds_ws/
-export LD_LIBRARY_PATH=/opt/ros/foxy/lib
-colcon build --packages-select cyclonedds
+source /opt/ros/foxy/setup.bash
+colcon build --packages-skip cyclonedds rmw_cyclonedds_cpp
 
-# Build all unitree messages
-colcon build
+# This builds only the Unitree message packages (unitree_api, unitree_go, unitree_hg)
 ```
 
 #### Environment Configuration
